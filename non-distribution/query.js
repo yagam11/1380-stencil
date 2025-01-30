@@ -27,10 +27,38 @@ For example, `execSync(`echo "${input}" | ./c/process.sh`, {encoding: 'utf-8'});
 
 const fs = require('fs');
 const {execSync} = require('child_process');
-const path = require('path');
+// const path = require('path');
 
+// Function to process the query (normalize, remove stopwords, and stem)
+function processQuery(query) {
+  // Use the existing process.sh and stem.js scripts to process the query
+  const processedQuery = execSync(
+      `echo "${query}" | ./c/process.sh | ./c/stem.js`,
+      {encoding: 'utf-8'},
+  ).trim();
+
+  return processedQuery.split(/\s+/); // Split into individual terms
+}
 
 function query(indexFile, args) {
+  const queryString = args.join(' '); // Combine arguments into a single query string
+  const terms = processQuery(queryString); // Process the query
+
+  if (terms.length === 0) {
+    console.log('No valid search terms after processing.');
+    return;
+  }
+
+  // Read the global index file
+  const globalIndex = fs.readFileSync(indexFile, 'utf8').split('\n');
+
+  // Search for lines that contain all the terms
+  const results = globalIndex.filter((line) => {
+    return terms.every((term) => line.includes(term));
+  });
+
+  // Print the matching lines
+  results.forEach((line) => console.log(line));
 }
 
 const args = process.argv.slice(2); // Get command-line arguments

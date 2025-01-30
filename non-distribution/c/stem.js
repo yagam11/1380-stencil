@@ -16,4 +16,11 @@ const rl = readline.createInterface({
 
 rl.on('line', function(line) {
   // Print the Porter stem from `natural` for each element of the stream.
+  const word = line.trim(); // Remove any leading/trailing whitespace
+
+  // Apply the Porter Stemmer to the word
+  const stemmedWord = natural.PorterStemmer.stem(word);
+
+  // Print the stemmed word
+  console.log(stemmedWord);
 });
