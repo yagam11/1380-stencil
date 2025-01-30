@@ -77,5 +77,3 @@ distribution.all.comm.send(['sid'], {node: node, service: 'status', method: 'get
 ```
 
 # Results and Reflections
-
-> ...
