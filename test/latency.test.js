@@ -1,7 +1,5 @@
 const distribution = require('../config.js');
-const id = distribution.util.id;
-
-const { serialize, deserialize } = require("./serializer");
+const util = distribution.util;
 const { performance } = require("perf_hooks");
 
 // Function to measure the average latency of a function
@@ -10,13 +8,13 @@ function measureLatency(func, input, iterations = 1000) {
 
   for (let i = 0; i < iterations; i++) {
     let start = performance.now();
-    func(input);
+    let result = func(input); // Execute function
     let end = performance.now();
     times.push(end - start);
   }
 
   let avgTime = times.reduce((a, b) => a + b, 0) / iterations;
-  return avgTime;
+  return { avgTime, result };
 }
 
 // Workloads to test (T2-T4)
@@ -47,9 +45,11 @@ function benchmark(workloads) {
     };
 
     workloads[category].forEach((item, index) => {
-      let serializedTime = measureLatency(serialize, item);
-      let serializedData = serialize(item);
-      let deserializedTime = measureLatency(deserialize, serializedData);
+      // Measure serialization time
+      let { avgTime: serializedTime, result: serializedData } = measureLatency(util.serialize, item);
+
+      // Measure deserialization time (using previously serialized data)
+      let deserializedTime = measureLatency(util.deserialize, serializedData).avgTime;
 
       results[category].serialization.push(serializedTime);
       results[category].deserialization.push(deserializedTime);
