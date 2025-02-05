@@ -81,14 +81,10 @@ distribution.all.comm.send(['sid'], {node: node, service: 'status', method: 'get
 
 ## Summary
 
-> Summarize your implementation, including key challenges you encountered. Remember to update the `report` section of the `package.json` file with the total number of hours it took you to complete each task of M1 (`hours`) and the lines of code per task.
-
-My implementation comprises `<number>` software components, totaling `<number>` lines of code. Key challenges included `<1, 2, 3 + how you solved them>`.
+My implementation comprises 5 software components, totaling 150 lines of code. Key challenges included understanding of the data structures of various data types, and familiarity to Javascript functions.
 
 ## Correctness & Performance Characterization
 
-> Describe how you characterized the correctness and performance of your implementation
+*Correctness*: I wrote 10 tests; these tests take ~0.5 seconds to execute. This includes objects with base types, functions, complex structures, nested and recursive structures, and edge cases such as special characters, empty objects, and malformed input.
 
-*Correctness*: I wrote `<number>` tests; these tests take `<time>` to execute. This includes objects with `<certain kinds of features>`.
-
-*Performance*: The latency of various subsystems is described in the `"latency"` portion of package.json. The characteristics of my development machines are summarized in the `"dev"` portion of package.json.
+*Performance*: The latency of various subsystems is described in the `"latency"` portion of package.json. The characteristics of my development machines are summarized in the `"dev"` portion of package.json. The associated script code  is latency.m1.js inside the test folder.
