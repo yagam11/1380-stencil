@@ -5,17 +5,19 @@ const { performance } = require("perf_hooks");
 // Function to measure the average latency of a function
 function measureLatency(func, input, iterations = 1000) {
   let times = [];
+  let result;  // Declare result variable
 
   for (let i = 0; i < iterations; i++) {
     let start = performance.now();
-    let result = func(input); // Execute function
+    result = func(input);  // Store function output
     let end = performance.now();
     times.push(end - start);
   }
 
   let avgTime = times.reduce((a, b) => a + b, 0) / iterations;
-  return { avgTime, result };
+  return { avgTime, result };  // Now 'result' is correctly defined
 }
+
 
 // Workloads to test (T2-T4)
 const workloads = {
