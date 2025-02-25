@@ -45,6 +45,7 @@ test('(2 pts) local.comm.send(all.status.get(nid))', (done) => {
 
     // from local node, run mygroup.status.get() on n5 via send()
     distribution.local.comm.send(['nid'], remote, (e, v) => {
+      // console.log(e, v);
       expect(e).toEqual({});
 
       try {

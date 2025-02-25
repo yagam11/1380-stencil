@@ -15,16 +15,19 @@ test('(5 pts) (scenario) create group', (done) => {
 
   const groupA = {};
   groupA[id.getSID(n1)] = n1;
-  // Add nodes n2 and n3 to the group...
+  groupA[id.getSID(n2)] = n2;
+  groupA[id.getSID(n3)] = n3;
 
   const nids = Object.values(allNodes).map((node) => id.getNID(node));
 
   // Use distribution.local.groups.put to add groupA to the local node
   // Note: The groupA.status.get call should be inside the put method's callback.
+  distribution.local.groups.put({gid: 'groupA'}, groupA, (e, v) => {
     distribution.groupA.status.get('nid', (e, v) => {
       expect(Object.values(v)).toEqual(expect.arrayContaining(nids));
       done();
     });
+  });
 });
 
 test('(5 pts) (scenario) dynamic group membership', (done) => {
@@ -44,7 +47,7 @@ test('(5 pts) (scenario) dynamic group membership', (done) => {
   // Create the group with initial nodes
   distribution.local.groups.put(config, initialNodes, (e, v) => {
     // Add a new node dynamically to the group
-
+    distribution.local.groups.add('groupB', n3, (e, v) => {
       distribution.groupB.status.get('nid', (e, v) => {
         try {
           expect(Object.values(v)).toEqual(expect.arrayContaining(
@@ -54,6 +57,7 @@ test('(5 pts) (scenario) dynamic group membership', (done) => {
           done(error);
         }
       });
+    });
   });
 });
 
@@ -65,14 +69,16 @@ test('(5 pts) (scenario) group relativity', (done) => {
 */
   const groupC = {};
   // Create groupC in an appropriate way...
-
+  groupC[id.getSID(n1)] = n1;
+  groupC[id.getSID(n2)] = n2;
 
   const config = {gid: 'groupC'};
 
   distribution.local.groups.put(config, groupC, (e, v) => {
     distribution.groupC.groups.put(config, groupC, (e, v) => {
       // Modify the local 'view' of the group...
-
+      distribution.groupC.groups.rem('groupC', n1, (e, v) => {
+        // Validate that the local view of the group is as expected...
         distribution.groupC.groups.get('groupC', (e, v) => {
           const n1View = v[id.getSID(n1)];
           const n2View = v[id.getSID(n2)];
@@ -88,6 +94,7 @@ test('(5 pts) (scenario) group relativity', (done) => {
             done(error);
           }
         });
+      });
     });
   });
 });

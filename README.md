@@ -109,3 +109,28 @@ My implementation comprises 5 software components, totaling 200 lines of code. K
 > How would you explain the implementation of `createRPC` to someone who has no background in computer science — i.e., with the minimum jargon possible?
 
 CreateRPC is like asking the waiter/waitress what you want, and they will bring you when it is ready without you go to the kitchen and make the food, where createrpc is the person that takes your order, communicates it to the kitchen, and brings the food/result.
+
+# M3: Node Groups & Gossip Protocols
+
+
+## Summary
+
+
+My implementation comprises 8 new software components, totaling 300 added lines of code over the previous implementation. Key challenges included getting familar with asynchronous function calls of Javascript and time of barely able to debug because everything is clogged together.
+
+
+## Correctness & Performance Characterization
+
+> Describe how you characterized the correctness and performance of your implementation
+
+
+*Correctness* -- number of tests and time they take.
+5 times takes about 5s.
+
+*Performance* -- spawn times (all students) and gossip (lab/ec-only).
+Time:        0.984 s, estimated 1 s
+
+## Key Feature
+
+> What is the point of having a gossip protocol? Why doesn't a node just send the message to _all_ other nodes in its group?
+Cost configurable and fault tolerant.

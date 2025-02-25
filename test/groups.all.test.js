@@ -1,5 +1,6 @@
 const distribution = require('../config.js');
 const id = distribution.util.id;
+const log = distribution.util.log;
 
 test('(3 pts) all.groups.del(random)', (done) => {
   distribution.group4.groups.del('random', (e, v) => {
@@ -40,7 +41,7 @@ test('(2 pts) all.groups.put/get(browncs)', (done) => {
     '507aa': {ip: '127.0.0.1', port: 8080},
     '14ab0': {ip: '127.0.0.1', port: 8081},
   };
-
+  
   distribution.group4.groups.put('browncsgpg', g, (e, v) => {
     distribution.group4.groups.get('browncsgpg', (e, v) => {
       try {

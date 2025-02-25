@@ -1,26 +1,23 @@
+const comm = require("./comm");
+
 /** @typedef {import("../types").Callback} Callback */
 
 function routes(config) {
   const context = {};
-  context.gid = config.gid || 'all';
+  context.gid = config.gid || "all";
+  const groupComm = comm({ gid: context.gid });
 
-  /**
-   * @param {object} service
-   * @param {string} name
-   * @param {Callback} callback
-   */
-  function put(service, name, callback = () => { }) {
-  }
+  return {
+    put: (service, name, callback = () => {}) => {
+      const remote = { service: "routes", method: "put" };
+      groupComm.send([service, name], remote, callback);
+    },
 
-  /**
-   * @param {object} service
-   * @param {string} name
-   * @param {Callback} callback
-   */
-  function rem(service, name, callback = () => { }) {
-  }
-
-  return {put, rem};
+    rem: (name, callback = () => {}) => {
+      const remote = { service: "routes", method: "rem" };
+      groupComm.send([name], remote, callback);
+    },
+  };
 }
 
 module.exports = routes;

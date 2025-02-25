@@ -1,42 +1,44 @@
-const log = require('../util/log');
+const id = require('../util/id');
 
 const status = {};
 
 global.moreStatus = {
-  sid: id.getSID(global.nodeConfig),
-  nid: id.getNID(global.nodeConfig),
-  ip: global.nodeConfig.ip,
-  port: global.nodeConfig.port,
+  sid: id.getSID(global.nodeConfig), // Use id.getSID directly
+  nid: id.getNID(global.nodeConfig), // Use id.getNID directly
   counts: 0,
 };
 
-status.get = function(configuration, callback) {
+status.get = function(configuration, callback = () => {}) {
   callback = callback || function() { };
+  const statusValues = {
+    // static properties
+    nid: () => global.moreStatus.nid,
+    sid: () => global.moreStatus.sid,
+    ip: () => global.nodeConfig.ip,
+    port: () => global.nodeConfig.port,
 
-  // Supported keys for status retrieval
-  const statusInfo = {
-    nid: global.moreStatus.nid,
-    sid: global.moreStatus.sid,
-    ip: global.moreStatus.ip,
-    port: global.moreStatus.port,
-    counts: global.moreStatus.counts,
-    heapTotal: process.memoryUsage().heapTotal,
-    heapUsed: process.memoryUsage().heapUsed,
+    // dynamic properties
+    counts: () => global.moreStatus.counts,
+    heapTotal: () => process.memoryUsage().heapTotal,
+    heapUsed: () => process.memoryUsage().heapUsed,
   };
 
-  // If the requested key exists, return its value
-  if (statusInfo.hasOwnProperty(configuration)) {
-    callback(null, statusInfo[configuration]);
+  if (statusValues.hasOwnProperty(configuration)) {
+    try {
+      const value = typeof statusValues[configuration] === 'function'
+        ? statusValues[configuration]()
+        : statusValues[configuration];
+      callback(null, value);
+      return value; 
+    } catch (e) {
+      callback(e);
+    }
   } else {
-    callback(new Error(`Invalid status key: ${configuration}`), null);
+    callback(new Error(`Invalid configuration: ${configuration}`));
   }
 };
 
-
-status.spawn = function(configuration, callback) {
-};
-
-status.stop = function(callback) {
-};
+status.spawn = require('@brown-ds/distribution/distribution/local/status').spawn; 
+status.stop = require('@brown-ds/distribution/distribution/local/status').stop; 
 
 module.exports = status;

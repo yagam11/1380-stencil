@@ -1,53 +1,52 @@
 /** @typedef {import("../types").Callback} Callback */
+const routes_table = {};
 
-const routes = {};
-const services = {};
+function get(configuration, callback = () => {}) {
+  const service = configuration instanceof Object ? configuration.service : configuration;
+  const gid = configuration instanceof Object ? (configuration.gid || 'local') : 'local';
+  let error, config;
 
-/**
- * @param {string} configuration
- * @param {Callback} callback
- * @return {void}
- */
-function get(configuration, callback) {
-  callback = callback || function() {}; // Ensure callback exists
-
-  if (services.hasOwnProperty(configuration)) {
-    callback(null, services[configuration]); // Return the service
-  } else {
-    callback(new Error(`Service '${configuration}' does not exist`), null);
+  try {
+    if (gid === "local") {
+      if (service in routes_table) {
+        config = routes_table[service];
+      } else if (global.toLocal && global.toLocal[service]) {
+        config = { call: global.toLocal[service] };
+      } else {
+        throw new Error(`Service '${service}' not found in local routes`);
+      }
+    } else if (gid && global.distribution && global.distribution[gid]) {
+      if (service in global.distribution[gid]) {
+        config = global.distribution[gid][service];
+      } else {
+        throw new Error(`Service '${service}' not found in group '${gid}'`);
+      }
+    } else {
+      throw new Error(`Invalid group ID '${gid}'`);
+    }
+  } catch (e) {
+    error = e;
   }
+  
+  callback(error, config);
+  return config;
 }
 
-/**
- * @param {object} service
- * @param {string} configuration
- * @param {Callback} callback
- * @return {void}
- */
-function put(service, configuration, callback) {
-  callback = callback || function() {}; // Ensure callback exists
 
-  if (!service || typeof service !== "object") {
-    return callback(new Error("Invalid service object"), null);
-  }
-
-  services[configuration] = service;
-  callback(null, `Service '${configuration}' registered successfully`);
+function put(service, configuration, callback = () => {}) {
+  routes_table[configuration] = service;
+  callback(undefined, service);
 }
 
-/**
- * @param {string} configuration
- * @param {Callback} callback
- */
-function rem(configuration, callback) {
-  callback = callback || function() {}; // Ensure callback exists
 
-  if (services.hasOwnProperty(configuration)) {
-    delete services[configuration];
-    callback(null, `Service '${configuration}' removed successfully`);
+function rem(configuration, callback = () => {}) {
+  let error = undefined;
+  if (configuration in routes_table) {
+    Reflect.deleteProperty(routes_table, configuration);
   } else {
-    callback(new Error(`Service '${configuration}' does not exist`), null);
+    error = new Error(`${configuration} doesn't exist!`);
   }
-};
+  callback(error, configuration);
+}
 
-module.exports = {get, put, rem};
+module.exports = { get, put, rem };
