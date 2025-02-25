@@ -27,4 +27,5 @@ const groups = function(config) {
   };
 };
 
-module.exports = groups;
+// module.exports = groups;
+// module.exports = require('@brown-ds/distribution/distribution/all/groups');

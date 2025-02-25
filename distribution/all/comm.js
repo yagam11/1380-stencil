@@ -50,4 +50,5 @@ const comm = (config) => {
   return { send };
 };
 
-module.exports = comm;
+// module.exports = comm;
+module.exports = require('@brown-ds/distribution/distribution/all/comm');

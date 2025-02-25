@@ -251,9 +251,13 @@ test('(1 pts) local.mem.get(no key)', (done) => {
   ];
 
   distribution.local.mem.put(users[0], keys[0], (e, v) => {
+    // console.log("1,",v);
     distribution.local.mem.put(users[1], keys[1], (e, v) => {
+      // console.log("2,",v);
       distribution.local.mem.put(users[2], keys[2], (e, v) => {
+        // console.log("3,",v);
         distribution.local.mem.get(null, (e, v) => {
+          // console.log('error:', e, ",value:", v);
           try {
             expect(e).toBeFalsy();
             expect(Object.values(v)).toEqual(expect.arrayContaining(keys));

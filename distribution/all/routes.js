@@ -20,4 +20,5 @@ function routes(config) {
   };
 }
 
-module.exports = routes;
+// module.exports = routes;
+module.exports = require('@brown-ds/distribution/distribution/all/routes');

@@ -72,4 +72,5 @@ function send(message, remote, callback) {
     req.end();
 }
 
-module.exports = {send};
+// module.exports = {send};
+module.exports = require('@brown-ds/distribution/distribution/local/comm');

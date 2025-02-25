@@ -278,22 +278,26 @@ test('(3 pts) all.mem.get(no key)', (done) => {
   distribution.mygroup.mem.put(users[0], keys[0], (e, v) => {
     try {
       expect(e).toBeFalsy();
+      // console.log("1,",e, v);
     } catch (error) {
       done(error);
     }
     distribution.mygroup.mem.put(users[1], keys[1], (e, v) => {
       try {
         expect(e).toBeFalsy();
+        // console.log("2,",e, v);
       } catch (error) {
         done(error);
       }
       distribution.mygroup.mem.put(users[2], keys[2], (e, v) => {
         try {
           expect(e).toBeFalsy();
+          // console.log("3,",e, v);
         } catch (error) {
           done(error);
         }
         distribution.mygroup.mem.get(null, (e, v) => {
+          // console.log('error:', e, "value:", v);
           try {
             expect(e).toEqual({});
             expect(Object.values(v)).toEqual(expect.arrayContaining(keys));

@@ -98,4 +98,5 @@ groups.rem = function (name, node, callback = (error, value) => {
 };
 
 
-module.exports = groups;
+// module.exports = groups;
+module.exports = require('@brown-ds/distribution/distribution/local/groups');
