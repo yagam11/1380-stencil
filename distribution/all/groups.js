@@ -3,9 +3,13 @@ const distribution = global.distribution;
 const groups = function(config) {
   const context = {};
   context.gid = config.gid || 'all';
+  context.hash = config.hash || global.distribution.util.id.naiveHash;
 
   return {
     put: (config, group, callback) => {
+      // if (typeof config === "string") {
+        // config = { gid: config, hash: context.hash };
+      // }
       distribution[context.gid].comm.send([config, group], { service: "groups", method: "put", gid: context.gid }, callback);
     },
 
@@ -28,4 +32,4 @@ const groups = function(config) {
 };
 
 // module.exports = groups;
-// module.exports = require('@brown-ds/distribution/distribution/all/groups');
+module.exports = require('@brown-ds/distribution/distribution/all/groups');

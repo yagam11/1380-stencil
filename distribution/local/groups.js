@@ -22,9 +22,18 @@ groups.put = function (config, group, callback = () => {}) {
   if (typeof config === 'string') {
     config = { gid: config };
   }
-
+  // if (!config.gid) {
+  //   return callback(new Error("Group ID (gid) is required"), null);
+  // }
+  // if (!config.hash) {
+  //   config.hash = id.naiveHash; // Default hash function if not provided
+  // }
   // Store the group correctly in `groupSet`
   groupSet[config.gid] = group;
+  // groupSet[config.gid] = {
+  //   nodes: group,   // Store nodes in the group
+  //   hash: config.hash, // Store the selected hashing function
+  // };
 
   // Store nodes inside a global `groupsStore`
   if (!global.groupsStore) {
@@ -34,11 +43,10 @@ groups.put = function (config, group, callback = () => {}) {
   Object.keys(group).forEach((node) => {
     global.groupsStore['all'][id.getSID(group[node])] = group[node];
   });
-
-  // Initialize global distribution for the group
-  if (!global.distribution) {
-    global.distribution = {};
-  }
+  // if (!global.distribution) {
+  //   global.distribution = {};
+  // }
+  global.distribution[config.gid] = {};
 
   global.distribution[config.gid] = {
     status: require('../all/status')(config),

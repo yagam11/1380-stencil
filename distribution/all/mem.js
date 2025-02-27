@@ -1,4 +1,5 @@
 const distribution = global.distribution;
+const groups = require("../local/groups");
 
 function mem(config) {
   const context = {};
@@ -8,48 +9,70 @@ function mem(config) {
           always be a string */
   return {
     get: (configuration, callback) => {
-      try {
-        const kid = global.distribution.util.id.getID(configuration);
-        const nids = Object.keys(global.distribution[context.gid]);
-        const responsibleNode = context.hash(kid, nids); // Hashing selects the node
-
-        // console.log(`GET: Routing key '${configuration}' (KID: ${kid}) to node ${responsibleNode}`);
-
-        distribution[context.gid].comm.send(responsibleNode, { service: "mem", method: "get", key: configuration }, callback);
-      } catch (error) {
-        callback(error, null);
-      }
+      let key = configuration;
+      const kid = distribution.util.id.getID(key);
+      
+      groups.get(context.gid, (err, group) => {
+        if (err) {
+          return callback(err, null);
+        }
+        const nids = Object.keys(group);
+        const responsibleNode = context.hash(kid, nids);
+        // console.log(group, configuration)
+        const remote = {
+          node: group[responsibleNode], // The responsible node
+          service: "mem", method: "get",
+        };
+    
+        distribution.local.comm.send([configuration], remote, callback);
+      });
     },
 
     put: (state, configuration, callback) => {
-      try {
-        let key = configuration;
-        if (key === null) {
-          key = global.distribution.util.id.getID(state); // Generate KID if no key is provided
+      const kid = distribution.util.id.getID(configuration);
+      // if (configuration === null) {
+      //   kid = distribution.util.id.getID(state);
+      // }
+
+      groups.get(context.gid, (err, group) => {
+        if (err) {
+          return callback(err, null);
         }
-
-        const kid = global.distribution.util.id.getID(key); // Compute KID (SHA-256 of key)
-        const nids = Object.keys(global.distribution[context.gid]); // Get node list
-        const responsibleNode = context.hash(kid, nids); // Select the responsible node
-
-        distribution[context.gid].comm.send(responsibleNode, { service: "mem", method: "put", key, value: state }, callback);
-      } catch (error) {
-        callback(error, null);
-      }
+        // console.log(context.gid, group);
+        const nids = Object.keys(group); 
+        const responsibleNode = context.hash(kid, nids);
+    
+        const remote = {
+          node: group[responsibleNode],
+          service: "mem", method: "put", 
+          // gid: context.gid // The group ID
+        };
+      
+        // Send the request to the responsible node
+        distribution.local.comm.send([state, configuration], remote, callback);
+      });
     },
 
     del: (configuration, callback) => {
-      try {
-        const kid = global.distribution.util.id.getID(configuration); // Compute KID (SHA-256 of key)
-        const nids = Object.keys(global.distribution[context.gid]); // Get node list
-        const responsibleNode = context.hash(kid, nids); // Select the responsible node
-
-        // console.log(`DEL: Deleting key '${configuration}' (KID: ${kid}) from node ${responsibleNode}`);
-
-        distribution[context.gid].comm.send(responsibleNode, { service: "mem", method: "del", key: configuration }, callback);
-      } catch (error) {
-        callback(error, null);
-      }
+      let key = configuration;
+      const kid = distribution.util.id.getID(key);
+      
+      groups.get(context.gid, (err, group) => {
+        if (err) {
+          return callback(err, null);
+        }
+        const nids = Object.keys(group); 
+        const responsibleNode = context.hash(kid, nids);
+    
+        const remote = {
+          node: group[responsibleNode],
+          service: "mem", method: "del", 
+          // gid: context.gid // The group ID
+        };
+      
+        // Send the request to the responsible node
+        distribution.local.comm.send([configuration], remote, callback);
+      });
     },
 
     reconf: (configuration, callback) => {
@@ -57,5 +80,4 @@ function mem(config) {
   };
 };
 
-// module.exports = mem;
-module.exports = require('@brown-ds/distribution/distribution/all/mem');
+module.exports = mem;
