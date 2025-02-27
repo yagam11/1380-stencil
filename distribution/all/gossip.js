@@ -17,6 +17,4 @@ const gossip = function(config) {
   };
 };
 
-// module.exports = gossip;
-
-module.exports = require('@brown-ds/distribution/distribution/all/gossip');
+module.exports = gossip;

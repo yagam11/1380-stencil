@@ -10,26 +10,26 @@ const groups = function(config) {
       // if (typeof config === "string") {
         // config = { gid: config, hash: context.hash };
       // }
-      distribution[context.gid].comm.send([config, group], { service: "groups", method: "put", gid: context.gid }, callback);
+      distribution[context.gid].comm.send([config, group], { service: "groups", method: "put"}, callback);
     },
 
     del: (name, callback) => {
-      distribution[context.gid].comm.send([name], { service: "groups", method: "del", gid: context.gid }, callback);
+      distribution[context.gid].comm.send([name], { service: "groups", method: "del"}, callback);
     },
 
     get: (name, callback) => {
-      distribution[context.gid].comm.send([name], { service: "groups", method: "get", gid: context.gid }, callback);
+      distribution[context.gid].comm.send([name], { service: "groups", method: "get"}, callback);
     },
 
     add: (name, node, callback) => {
-      distribution[context.gid].comm.send([name, node], { service: "groups", method: "add", gid: context.gid }, callback);
+      distribution[context.gid].comm.send([name, node], { service: "groups", method: "add"}, callback);
     },
 
     rem: (name, node, callback) => {
-      distribution[context.gid].comm.send([name, node], { service: "groups", method: "rem", gid: context.gid }, callback);
+      distribution[context.gid].comm.send([name, node], { service: "groups", method: "rem"}, callback);
     },
   };
 };
 
-// module.exports = groups;
-module.exports = require('@brown-ds/distribution/distribution/all/groups');
+module.exports = groups;
+// module.exports = require('@brown-ds/distribution/distribution/all/groups');
