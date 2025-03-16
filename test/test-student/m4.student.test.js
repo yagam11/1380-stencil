@@ -8,20 +8,44 @@
 const distribution = require('../../config.js');
 const id = distribution.util.id;
 
-test('(1 pts) student test', (done) => {
-  // Fill out this test case...
-    // done(new Error('Not implemented'));
-  const user = { first: 'Debug', last: 'Test' };
-  const key = 'debugkey';
+test('(1 pts) student store.get()', (done) => {
+  const key = 'student_test_get';
 
-  distribution.mygroup.store.put(user, key, (e, v) => {
-    if (e) return done(new Error(`PUT failed: ${e.message}`));
+  distribution.local.store.get(key, (e, v) => {
+    try {
+      expect(e).toBeInstanceOf(Error);
+      expect(v).toBeFalsy();
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
+});
 
-    distribution.mygroup.store.get(key, (e, v) => {
+test('(1 pts) student store.put()', (done) => {
+  const user = {first: 'Student', last: 'Tester'};
+  const key = 'student_test_put';
+
+  distribution.local.store.put(user, key, (e, v) => {
+    try {
+      expect(e).toBeFalsy();
+      expect(v).toEqual(user);
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
+});
+
+test('(1 pts) student store.put/get()', (done) => {
+  const user = {first: 'Student', last: 'Tester'};
+  const key = 'student_test_put_get';
+
+  distribution.local.store.put(user, key, (e, v) => {
+    distribution.local.store.get(key, (e, v) => {
       try {
         expect(e).toBeFalsy();
         expect(v).toEqual(user);
-        console.log("✅ Store and Retrieve Test Passed");
         done();
       } catch (error) {
         done(error);
@@ -30,24 +54,38 @@ test('(1 pts) student test', (done) => {
   });
 });
 
+test('(1 pts) student store.put/del()', (done) => {
+  const user = {first: 'Student', last: 'Tester'};
+  const key = 'student_test_put_del';
 
-test('(1 pts) student test', (done) => {
-  // Fill out this test case...
-    done(new Error('Not implemented'));
+  distribution.local.store.put(user, key, (e, v) => {
+    distribution.local.store.del(key, (e, v) => {
+      try {
+        expect(e).toBeFalsy();
+        expect(v).toEqual(user);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
 });
 
+test('(1 pts) student store.put/del/get()', (done) => {
+  const user = {first: 'Student', last: 'Tester'};
+  const key = 'student_test_put_del_get';
 
-test('(1 pts) student test', (done) => {
-  // Fill out this test case...
-    done(new Error('Not implemented'));
-});
-
-test('(1 pts) student test', (done) => {
-  // Fill out this test case...
-    done(new Error('Not implemented'));
-});
-
-test('(1 pts) student test', (done) => {
-  // Fill out this test case...
-    done(new Error('Not implemented'));
+  distribution.local.store.put(user, key, (e, v) => {
+    distribution.local.store.del(key, (e, v) => {
+      distribution.local.store.get(key, (e, v) => {
+        try {
+          expect(e).toBeInstanceOf(Error);
+          expect(v).toBeFalsy();
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  });
 });

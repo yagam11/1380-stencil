@@ -34,7 +34,7 @@ test('(1 pts) consistentHash()', (done) => {
 
   const kid = id.getID(key);
   const nids = nodes.map((node) => id.getNID(node));
-
+  // console.log('nids', nids, 'kid', kid);
   const hash = id.consistentHash(kid, nids);
   const expectedHash = '8970c41015d3ccbf1f46691ae77ab225aa6c3d401f6c1c5297f4df7ec35c72b0';
 

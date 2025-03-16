@@ -55,10 +55,37 @@ function naiveHash(kid, nids) {
 }
 
 function consistentHash(kid, nids) {
+  const hashToNum = (value) => 
+    parseInt(crypto.createHash('sha256').update(value).digest('hex').slice(0, 8), 16);
+  const hashRing = nids.map(nid => ({ id: nid, hash: hashToNum(nid) }));
+  const kidHash = hashToNum(kid);
+  hashRing.push({ id: kid, hash: kidHash });
+  hashRing.sort((b, a) => a.hash - b.hash);
+  const kidIndex = hashRing.findIndex(item => item.id === kid);
+  const nextIndex = (kidIndex + 1) % hashRing.length;
+  return hashRing[nextIndex].id;
+
 }
 
 
 function rendezvousHash(kid, nids) {
+  // Convert a hashed value to a numerical representation
+  const hashToNum = (value) => 
+    parseInt(crypto.createHash('sha256').update(value).digest('hex').slice(0, 8), 16);
+
+  // Compute hash scores for each node by concatenating kid + nid
+  let maxHash = -1;
+  let selectedNid = null;
+
+  for (const nid of nids) {
+      const combinedHash = hashToNum(kid + nid); // Hash kid + nid
+      if (combinedHash > maxHash) {
+          maxHash = combinedHash;
+          selectedNid = nid;
+      }
+  }
+
+  return selectedNid;
 }
 
 module.exports = {

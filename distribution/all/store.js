@@ -23,9 +23,7 @@ function store(config) {
           return callback(new Error(`No nodes available in group '${context.gid}'.`), null);
         }
 
-        // Determine the responsible node
         const responsibleNode = context.hash(kid, nids);
-        // console.log(`Routing key '${key}' (KID: ${kid}) to node ${responsibleNode}`);
 
         const remote = {
           node: group[responsibleNode], // The responsible node
@@ -54,7 +52,6 @@ function store(config) {
 
         // Determine the responsible node
         const responsibleNode = context.hash(kid, nids);
-        // console.log(`Routing key '${key}' (KID: ${kid}) to node ${responsibleNode}`);
 
         const remote = {
           node: group[responsibleNode], // The responsible node
@@ -80,7 +77,6 @@ function store(config) {
           return callback(new Error(`No nodes available in group '${context.gid}'.`), null);
         }
 
-        // Determine the responsible node using consistent hashing
         const responsibleNode = context.hash(kid, nids);
         // console.log(`Routing key '${key}' (KID: ${kid}) to node ${responsibleNode}`);
 
@@ -89,7 +85,6 @@ function store(config) {
           service: "store", method: "del", // The method to call
         };
 
-        // Send the request to the responsible node
         distribution.local.comm.send([configuration], remote, callback);
       });
     },
@@ -100,4 +95,4 @@ function store(config) {
 };
 
 module.exports = store;
-// module.exports = require('@brown-ds/distribution/distribution/all/groups');
+// module.exports = require('@brown-ds/distribution/distribution/all/store');

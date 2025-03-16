@@ -134,3 +134,22 @@ Time:        0.984 s, estimated 1 s
 
 > What is the point of having a gossip protocol? Why doesn't a node just send the message to _all_ other nodes in its group?
 Cost configurable and fault tolerant.
+
+# M4: Distributed Storage
+
+
+## Summary
+
+> Summarize your implementation, including key challenges you encountered
+The project successfully implemented a distributed key-value store system with consistent hashing, robust error handling, and comprehensive testing. The key challenges were addressed through careful debugging, optimization, and testing, resulting in a reliable and scalable system.
+
+
+## Correctness & Performance Characterization
+
+The distributed key-value store achieves an insertion throughput of ~1.0 req/ms with ~10 ms latency per request and a retrieval throughput of ~1.67 req/ms with ~6 ms latency per request, ensuring efficient data operations under optimal parallel execution. 
+
+## Key Feature
+
+> Why is the `reconf` method designed to first identify all the keys to be relocated and then relocate individual objects instead of fetching all the objects immediately and then pushing them to their corresponding locations?
+
+The `reconf` method first identifies all keys before relocating objects to avoid unnecessary data transfers. This prevents fetching objects that may not need to be moved. It also ensures efficient coordination, reducing network congestion and avoiding duplicate work. By handling keys first, the system can optimize relocation and improve performance.
