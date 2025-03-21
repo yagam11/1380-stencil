@@ -39,6 +39,8 @@ test('(20 pts) all.mr:ncdc', (done) => {
   const expected = [{'1950': 22}, {'1949': 111}];
 
   const doMapReduce = (cb) => {
+    // console.log("readed mr and Checking distribution.ncdc:", distribution.ncdc);
+    // console.log("keys:", getDatasetKeys(dataset));
     distribution.ncdc.mr.exec({keys: getDatasetKeys(dataset), map: mapper, reduce: reducer}, (e, v) => {
       try {
         expect(v).toEqual(expect.arrayContaining(expected));

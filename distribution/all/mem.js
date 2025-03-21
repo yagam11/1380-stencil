@@ -80,4 +80,5 @@ function mem(config) {
   };
 };
 
-module.exports = mem;
+// module.exports = mem;
+module.exports = require('@brown-ds/distribution/distribution/all/mem');

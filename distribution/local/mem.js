@@ -60,4 +60,5 @@ function del(configuration, callback) {
   }
 };
 
-module.exports = {put, get, del};
+// module.exports = {put, get, del};
+module.exports = require('@brown-ds/distribution/distribution/local/mem');

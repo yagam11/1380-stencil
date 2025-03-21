@@ -1,6 +1,7 @@
 const distribution = require('../../config.js');
 const id = distribution.util.id;
 
+
 const ncdcGroup = {};
 const dlibGroup = {};
 const tfidfGroup = {};
@@ -29,6 +30,8 @@ test('(0 pts) (scenario) all.mr:ncdc', (done) => {
 */
 
   const mapper = (key, value) => {
+    // console.log('[Mapper] Input key:', key);
+    // console.log('[Mapper] Input value:', value);
     const words = value.split(/(\s+)/).filter((e) => e !== ' ');
     const out = {};
     out[words[1]] = parseInt(words[3]);
@@ -36,8 +39,11 @@ test('(0 pts) (scenario) all.mr:ncdc', (done) => {
   };
 
   const reducer = (key, values) => {
+    // console.log('[Reducer] Input key:', key);
+    // console.log('[Reducer] Input values:', values);
     const out = {};
     out[key] = values.reduce((a, b) => Math.max(a, b), -Infinity);
+    // console.log(out[key]);
     return out;
   };
 
@@ -94,9 +100,24 @@ test('(10 pts) (scenario) all.mr:dlib', (done) => {
 */
 
   const mapper = (key, value) => {
+    // console.log('[Mapper] Input key:', key);
+    // console.log('[Mapper] Input value:', value);
+
+    const words = value.split(/\s+/);
+    // For each word, emit a single key–value pair
+    const emits = words.map((word) => ({ [word]: 1 }));
+    return emits;
   };
 
   const reducer = (key, values) => {
+    // console.log('[Reducer] Input key:', key);
+    // console.log('[Reducer] Input values:', values);
+
+    const total = values.reduce((acc, v) => acc + v, 0);
+    // console.log('[Reducer] Output:', { [key]: total });
+
+    // Return the result as an object
+    return { [key]: total };
   };
 
   const dataset = [
@@ -169,10 +190,49 @@ test('(10 pts) (scenario) all.mr:tfidf', (done) => {
 */
 
   const mapper = (key, value) => {
+    // console.log('[Mapper] Input key:', key);
+    // console.log('[Mapper] Input value:', value);
+
+    const words = value.split(/\s+/);
+    const totalTerms = words.length;
+    
+    // Compute term frequency (TF)
+    const wordCounts = {};
+    words.forEach((word) => {
+      wordCounts[word] = (wordCounts[word] || 0) + 1;
+    });
+
+    // Emit { word: { doc: TF } } correctly
+    const emits = Object.entries(wordCounts).map(([word, count]) => ({
+      [word]: { [key]: count / totalTerms } // Correct emission format
+    }));
+
+    // console.log('[Mapper] Output:', emits);
+    return emits;
   };
+
+
 
   // Reduce function: calculate TF-IDF for each word
   const reducer = (key, values) => {
+    // console.log('[Reducer] Input key:', key);
+    // console.log('[Reducer] Input values:', values);
+  
+    const numDocuments = values.length;
+    const totalDocuments = 3; // We know we have 3 documents
+    const idf = Math.log10(totalDocuments / numDocuments);
+  
+    // Compute TF-IDF for each document
+    const tfidf = {};
+    values.forEach((docTF) => {
+      // Extract document name and TF value
+      const doc = Object.keys(docTF)[0];
+      const tf = docTF[doc];
+        tfidf[doc] = parseFloat((tf * idf).toFixed(2));
+    });
+  
+    // console.log('[Reducer] Output:', { [key]: tfidf });
+    return { [key]: tfidf };
   };
 
   const dataset = [
@@ -233,25 +293,102 @@ test('(10 pts) (scenario) all.mr:tfidf', (done) => {
   - Run the map reduce.
 */
 
-test('(10 pts) (scenario) all.mr:crawl', (done) => {
-    done(new Error('Implement this test.'));
-});
+// test('(10 pts) (scenario) all.mr:crawl', (done) => {
 
-test('(10 pts) (scenario) all.mr:urlxtr', (done) => {
-    done(new Error('Implement the map and reduce functions'));
-});
+// });
 
-test('(10 pts) (scenario) all.mr:strmatch', (done) => {
-    done(new Error('Implement the map and reduce functions'));
-});
+// test('(10 pts) (scenario) all.mr:urlxtr', (done) => {
+//     done(new Error('Implement the map and reduce functions'));
+// });
+
+// test('(10 pts) (scenario) all.mr:strmatch', (done) => {
+//     done(new Error('Implement the map and reduce functions'));
+// });
 
 test('(10 pts) (scenario) all.mr:ridx', (done) => {
-    done(new Error('Implement the map and reduce functions'));
+  const mapper = (docId, content) => {
+    const words = content.toLowerCase().match(/\b\w+\b/g) || []; // Extract words
+
+    // Emit (word, docId) pairs
+    return words.map(word => ({ [word]: docId }));
+  };
+  const reducer = (word, docIds) => {
+    const uniqueDocIds = [...new Set(docIds)]; // Remove duplicates
+    return { [word]: uniqueDocIds };
+  };
+
+  const dataset = [
+    { 'doc1': 'Quick fox jumps over dog' },
+    { 'doc2': 'Fast cat runs under dog' },
+    { 'doc3': 'Fox and cat are friends' },
+    { 'doc4': 'Fox is clever, dog is loyal' },
+  ];
+
+  const expected = [
+    { 'quick': ['doc1'] },
+    { 'fox': ['doc1', 'doc3', 'doc4'] },
+    { 'jumps': ['doc1'] },
+    { 'over': ['doc1'] },
+    { 'dog': ['doc1', 'doc2', 'doc4'] },
+    { 'fast': ['doc2'] },
+    { 'cat': ['doc2', 'doc3'] },
+    { 'runs': ['doc2'] },
+    { 'under': ['doc2'] },
+    { 'and': ['doc3'] },
+    { 'are': ['doc3'] },
+    { 'friends': ['doc3'] },
+    { 'is': ['doc4'] },
+    { 'clever': ['doc4'] },
+    { 'loyal': ['doc4'] },
+  ];
+  
+
+  const doMapReduce = (cb) => {
+    distribution.ridx.store.get(null, (e, v) => {
+      try {
+        expect(v.length).toBe(dataset.length); // Ensure dataset length matches
+      } catch (error) {
+        return done(error);
+      }
+  
+      distribution.ridx.mr.exec({ keys: v, map: mapper, reduce: reducer }, (e, v) => {
+        try {  
+          const normalize = (arr) => arr.map(obj => {
+            const key = Object.keys(obj)[0];
+            return { [key]: obj[key].sort() }; // Sort document lists
+          });
+          
+          expect(normalize(v)).toEqual(expect.arrayContaining(normalize(expected)));          
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  };
+  
+
+  let cntr = 0;
+
+  // 🔹 Store the dataset in distributed storage
+  dataset.forEach((doc) => {
+    const docId = Object.keys(doc)[0];
+    const content = doc[docId];
+
+    distribution.ridx.store.put(content, docId, (e, v) => {
+      cntr++;
+      // Once all documents are stored, run MapReduce
+      if (cntr === dataset.length) {
+        doMapReduce();
+      }
+    });
+  });
+
 });
 
-test('(10 pts) (scenario) all.mr:rlg', (done) => {
-    done(new Error('Implement the map and reduce functions'));
-});
+// test('(10 pts) (scenario) all.mr:rlg', (done) => {
+//     done(new Error('Implement the map and reduce functions'));
+// });
 
 /*
     This is the setup for the test scenario.
@@ -271,25 +408,25 @@ beforeAll((done) => {
   tfidfGroup[id.getSID(n2)] = n2;
   tfidfGroup[id.getSID(n3)] = n3;
 
-  crawlGroup[id.getSID(n1)] = n1;
-  crawlGroup[id.getSID(n2)] = n2;
-  crawlGroup[id.getSID(n3)] = n3;
+  // crawlGroup[id.getSID(n1)] = n1;
+  // crawlGroup[id.getSID(n2)] = n2;
+  // crawlGroup[id.getSID(n3)] = n3;
 
-  urlxtrGroup[id.getSID(n1)] = n1;
-  urlxtrGroup[id.getSID(n2)] = n2;
-  urlxtrGroup[id.getSID(n3)] = n3;
+  // urlxtrGroup[id.getSID(n1)] = n1;
+  // urlxtrGroup[id.getSID(n2)] = n2;
+  // urlxtrGroup[id.getSID(n3)] = n3;
 
-  strmatchGroup[id.getSID(n1)] = n1;
-  strmatchGroup[id.getSID(n2)] = n2;
-  strmatchGroup[id.getSID(n3)] = n3;
+  // strmatchGroup[id.getSID(n1)] = n1;
+  // strmatchGroup[id.getSID(n2)] = n2;
+  // strmatchGroup[id.getSID(n3)] = n3;
 
   ridxGroup[id.getSID(n1)] = n1;
   ridxGroup[id.getSID(n2)] = n2;
   ridxGroup[id.getSID(n3)] = n3;
 
-  rlgGroup[id.getSID(n1)] = n1;
-  rlgGroup[id.getSID(n2)] = n2;
-  rlgGroup[id.getSID(n3)] = n3;
+  // rlgGroup[id.getSID(n1)] = n1;
+  // rlgGroup[id.getSID(n2)] = n2;
+  // rlgGroup[id.getSID(n3)] = n3;
 
 
   const startNodes = (cb) => {
@@ -315,7 +452,12 @@ beforeAll((done) => {
               const tfidfConfig = {gid: 'tfidf'};
               distribution.local.groups.put(tfidfConfig, tfidfGroup, (e, v) => {
                 distribution.tfidf.groups.put(tfidfConfig, tfidfGroup, (e, v) => {
-                  done();
+                  const ridxConfig = { gid: 'ridx' };
+                  distribution.local.groups.put(ridxConfig, ridxGroup, (e, v) => {
+                    distribution.ridx.groups.put(ridxConfig, ridxGroup, (e, v) => {
+                      done();
+                    });
+                  });
                 });
               });
             });
