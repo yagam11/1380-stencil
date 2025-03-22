@@ -2,134 +2,97 @@
 const groups = require("../local/groups");
 const id = require("../util/id");
 const distribution = global.distribution;
-const routes = require("../local/routes");
-/**
- * Map functions used for mapreduce
- * @callback Mapper
- * @param {any} key
- * @param {any} value
- * @returns {object[]}
- */
+const localRoutes = require("../local/routes");
+const remoteRoutes = require("../all/routes");
 
-/**
- * Reduce functions used for mapreduce
- * @callback Reducer
- * @param {any} key
- * @param {Array} value
- * @returns {object}
- */
-
-/**
- * @typedef {Object} MRConfig
- * @property {Mapper} map
- * @property {Reducer} reduce
- * @property {string[]} keys
- */
-
-
-/*
-  Note: The only method explicitly exposed in the `mr` service is `exec`.
-  Other methods, such as `map`, `shuffle`, and `reduce`, should be dynamically
-  installed on the remote nodes and not necessarily exposed to the user.
-*/
+// Map service to be registered on each node
+const mapService = {
+  map: (msg, cb) => {
+    const mapFunc = eval('(' + msg.mapFunc + ')');
+    distribution[msg.gid].store.get(msg.key, (err, value) => {
+      if (err) return cb(err);
+      // Apply the map function to the value
+      const result = mapFunc(msg.key, value);
+      cb(null, { result });
+    });
+  }
+};
 
 function mr(config) {
   const context = {
     gid: config.gid || 'all',
   };
-
-  function notify(msg) {
-    if (!context.acks) context.acks = new Set();
-    context.acks.add(msg.sid);
-
-    // When all nodes have acknowledged
-    if (context.acks.size === context.expectedAcks) {
-      context.cb(null, context.result);
-      distribution.local.routes.rem(context.mrId); // Cleanup
-    }
-  }
-
-  /**
-   * @param {MRConfig} configuration
-   * @param {Callback} cb
-   * @return {void}
-   */
+  
   function exec(configuration, cb) {
-    // mapper/reducer/keys imported
     const { map, reduce, keys } = configuration;
-    // nodeInfo (orchestrator)
+    console.log(`[MapReduce] GID: ${context.gid}, Keys:`, keys);
+
     const nodeInfo = global.nodeConfig || { ip: 'unknown', port: 'unknown' };
-    // console.log(`[MapReduce Orchestrator] Running on ${nodeInfo.ip}:${nodeInfo.port}`);
+    console.log(`[MapReduce Orchestrator] Running on ${nodeInfo.ip}:${nodeInfo.port}`);
 
     const kvPairs = [];
-    let completed = 0;
     const shuffleDict = {};
+    let completed = 0;
 
-    keys.forEach((key) => {
-      distribution[context.gid].store.get(key, (err, value) => {
-        if (err) {
-          console.error(`[MR] Error retrieving key "${key}":`, err);
-        } else {
-          console.log(`[MR] Successfully fetched key "${key}":`, value);
+    groups.get(context.gid, (err, group) => {
+      if (err) return cb(err);
 
-          const mapped = map(key, value);
-          console.log(`[MR] Mapped result for "${key}":`, mapped);
+      const nids = Object.keys(group);
+      const distributedRoutes = remoteRoutes({ gid: context.gid });
 
-          for (const obj of mapped) {
-            const [k, v] = Object.entries(obj)[0];
-            console.log(`[MR] Adding to shuffleDict: ${k} -> ${v}`);
-            if (!shuffleDict[k]) {
-              shuffleDict[k] = [];
+      // Register map service remotely on all nodes in the group
+      Object.values(group).forEach((node) => {
+        distributedRoutes.put(mapService, 'mr-map', (err) => {
+          console.log(`[MR] Registered 'mr-map' on node ${id.getSID(node)}`);
+        });
+      });
+
+      keys.forEach((key) => {
+        const kid = id.getID(key);
+        const responsibleNid = id.naiveHash(kid, nids);
+        const responsibleNode = group[responsibleNid];
+
+        const message = {
+          gid: context.gid,
+          key,
+          mapFunc: map.toString(),
+        };
+
+        const remote = {
+          node: responsibleNode,
+          service: 'mr-map',
+          method: 'map',
+        };
+
+        distribution.local.comm.send([message], remote, (err, res) => {
+          if (err) {
+            console.error(`[MR] Failed to send map for key "${key}":`, err);
+          } else {
+            console.log(`[MR] Map result for "${key}":`, res);
+            for (const obj of res.result) {
+              const [k, v] = Object.entries(obj)[0];
+              if (!shuffleDict[k]) shuffleDict[k] = [];
+              shuffleDict[k].push(v);
             }
-            shuffleDict[k].push(v);
           }
-        }
-        completed++;
-        if (completed === keys.length) {
-          console.log(`[MR] All keys fetched. Proceeding to shuffle and reduce...`);
-          console.log(`[MR] Shuffled key-value groups:`, shuffleDict);  // <--- New log added here
 
-          const result = [];
-          for (const [key, values] of Object.entries(shuffleDict)) {
-            const reduced = reduce(key, values);
-            result.push(reduced);
+          completed++;
+          if (completed === keys.length) {
+            console.log(`[MR] All maps complete. Proceeding to reduce.`);
+            const result = [];
+            for (const [key, values] of Object.entries(shuffleDict)) {
+              const reduced = reduce(key, values);
+              result.push(reduced);
+            }
+            console.log(`[MR] Final Reduce Output:`, result);
+            cb(null, result);
           }
-          console.log(`[MR] Final Reduce Output:`, result);
-          cb(null, result);
-        }
-
+        });
       });
     });
-
-    // hardcoded for testing (start)
-    // if (context.gid === "ncdc") {
-    //   const expected = [{'1950': 22}, {'1949': 111}];
-    //   return cb(null, expected);
-    // } else if (context.gid === "avgwrdl") {
-    //   const expected = [
-    //     {'doca': 5.5},
-    //     {'docb': 7.0},
-    //     {'docc': 5.14},
-    //   ];
-    //   return cb(null, expected);
-    // } else if (context.gid === "cfreq") {
-    //   const expected = [
-    //     {'e': 7}, {'h': 2}, {'l': 4},
-    //     {'o': 3}, {'w': 1}, {'r': 4},
-    //     {'d': 2}, {'m': 2}, {'a': 4},
-    //     {'p': 2}, {'u': 2}, {'c': 4},
-    //     {'t': 4}, {'s': 1}, {'n': 2},
-    //     {'i': 1}, {'g': 1}, {'x': 1},
-    //   ];
-    //   return cb(null, expected);
-    // }
-    // cb(null, []);   
-    // hardcoded for testing (end)
-
   }
-  return {exec};
+
+  return { exec };
 };
 
 module.exports = mr;
-
-// module.exports = require('@brown-ds/distribution/distribution/all/mr');
