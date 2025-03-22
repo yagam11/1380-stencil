@@ -2,96 +2,142 @@
 const groups = require("../local/groups");
 const id = require("../util/id");
 const distribution = global.distribution;
-const routes = require("../local/routes");
-
-/**
- * Map functions used for mapreduce
- * @callback Mapper
- * @param {any} key
- * @param {any} value
- * @returns {object[]}
- */
-
-/**
- * Reduce functions used for mapreduce
- * @callback Reducer
- * @param {any} key
- * @param {Array} value
- * @returns {object}
- */
-
-/**
- * @typedef {Object} MRConfig
- * @property {Mapper} map
- * @property {Reducer} reduce
- * @property {string[]} keys
- */
-
-
-/*
-  Note: The only method explicitly exposed in the `mr` service is `exec`.
-  Other methods, such as `map`, `shuffle`, and `reduce`, should be dynamically
-  installed on the remote nodes and not necessarily exposed to the user.
-*/
+const localRoutes = require("../local/routes");
+const remoteRoutes = require("../all/routes");
 
 function mr(config) {
   const context = {
     gid: config.gid || 'all',
   };
 
-  /**
-   * @param {MRConfig} configuration
-   * @param {Callback} cb
-   * @return {void}
-   */
+  // Map service to be registered on each node
+  const mapService = {
+    map: (msg, cb) => {
+      const mapFunc = eval('(' + msg.mapFunc + ')');
+      distribution[msg.gid].store.get(msg.key, (err, value) => {
+        if (err) return cb(err);
+        const result = mapFunc(msg.key, value);
+        cb(null, { result });
+      });
+    }
+  };
+
+  // Reduce service to be registered on each node
+  const reduceService = {
+    reduce: (msg, cb) => {
+      const reduceFunc = eval('(' + msg.reduceFunc + ')');
+      const key = msg.key;
+      const values = msg.values;
+      const result = reduceFunc(key, values);
+      cb(null, result);
+    }
+  };
+
   function exec(configuration, cb) {
-    // mapper/reducer/keys imported
     const { map, reduce, keys } = configuration;
-    // nodeInfo -- the orchestrator
+    console.log(`[MapReduce] GID: ${context.gid}, Keys:`, keys);
+
     const nodeInfo = global.nodeConfig || { ip: 'unknown', port: 'unknown' };
     console.log(`[MapReduce Orchestrator] Running on ${nodeInfo.ip}:${nodeInfo.port}`);
 
-    let completed = 0;
     const shuffleDict = {};
+    let completed = 0;
 
-    keys.forEach((key) => {
-      distribution[context.gid].store.get(key, (err, value) => {
-        if (err) {
-          console.error(`[MR] Error retrieving key "${key}":`, err);
-        } else {
-          console.log(`[MR] Successfully fetched key "${key}":`, value);
+    groups.get(context.gid, (err, group) => {
+      if (err) return cb(err);
 
-          const mapped = map(key, value);
-          console.log(`[MR] Mapped result for "${key}":`, mapped);
+      const nids = Object.keys(group);
+      const distributedRoutes = remoteRoutes({ gid: context.gid });
 
-          for (const obj of mapped) {
-            const [k, v] = Object.entries(obj)[0];
-            console.log(`[MR] Adding to shuffleDict: ${k} -> ${v}`);
-            if (!shuffleDict[k]) {
-              shuffleDict[k] = [];
+      // Register map and reduce services remotely on all nodes in the group
+      Object.values(group).forEach((node) => {
+        distributedRoutes.put(mapService, 'mr-map', (err) => {
+          console.log(`[MR] Registered 'mr-map' on node ${id.getSID(node)}`);
+        });
+        distributedRoutes.put(reduceService, 'mr-reduce', (err) => {
+          console.log(`[MR] Registered 'mr-reduce' on node ${id.getSID(node)}`);
+        });
+      });
+
+      keys.forEach((key) => {
+        const kid = id.getID(key);
+        const responsibleNid = id.naiveHash(kid, nids);
+        const responsibleNode = group[responsibleNid];
+
+        const message = {
+          gid: context.gid,
+          key,
+          mapFunc: map.toString(),
+        };
+
+        const remote = {
+          node: responsibleNode,
+          service: 'mr-map',
+          method: 'map',
+        };
+
+        distribution.local.comm.send([message], remote, (err, res) => {
+          if (err) {
+            console.error(`[MR] Failed to send map for key "${key}":`, err);
+          } else {
+            console.log(`[MR] Map result for "${key}":`, res);
+            for (const obj of res.result) {
+              const [k, v] = Object.entries(obj)[0];
+              if (!shuffleDict[k]) shuffleDict[k] = [];
+              shuffleDict[k].push(v);
             }
-            shuffleDict[k].push(v);
           }
-        }
-        completed++;
-        if (completed === keys.length) {
-          console.log(`[MR] All keys fetched. Proceeding to shuffle and reduce...`);
-          console.log(`[MR] Shuffled key-value groups:`, shuffleDict);  // <--- New log added here
 
-          const result = [];
-          for (const [key, values] of Object.entries(shuffleDict)) {
-            const reduced = reduce(key, values);
-            result.push(reduced);
+          completed++;
+          if (completed === keys.length) {
+            console.log(`[MR] All maps complete. Proceeding to shuffle.`);
+            console.log(`[MR] Shuffled Key-Value Pairs:`, shuffleDict);
+
+            // BEGIN DISTRIBUTED REDUCE
+            const results = [];
+            let reducesDone = 0;
+            const reduceKeys = Object.keys(shuffleDict);
+
+            reduceKeys.forEach((key) => {
+              const kid = id.getID(key);
+              const responsibleNid = id.naiveHash(kid, nids);
+              const responsibleNode = group[responsibleNid];
+
+              const message = {
+                key,
+                values: shuffleDict[key],
+                reduceFunc: reduce.toString(),
+              };
+
+              const remote = {
+                node: responsibleNode,
+                service: 'mr-reduce',
+                method: 'reduce',
+              };
+
+              distribution.local.comm.send([message], remote, (err, res) => {
+                if (err) {
+                  console.error(`[MR] Failed to send reduce for key "${key}":`, err);
+                } else {
+                  console.log(`[MR] Reduce result for "${key}":`, res);
+                  results.push(res);
+                }
+
+                reducesDone++;
+                if (reducesDone === reduceKeys.length) {
+                  console.log(`[MR] Final Reduce Output:`, results);
+                  cb(null, results);
+                }
+              });
+            });
+            // END DISTRIBUTED REDUCE
           }
-          console.log(`[MR] Final Reduce Output:`, result);
-          cb(null, result);
-        }
-
+        });
       });
     });
-
   }
-  return {exec};
+
+  return { exec };
 };
 
 module.exports = mr;
