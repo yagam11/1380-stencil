@@ -1,0 +1,31 @@
+name: Deploy Node.js Backend to EC2
+
+on:
+  push:
+    branches:
+      - main  # or your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd ~/your-app-dir || git clone https://github.com/your-user/your-repo.git your-app-dir && cd your-app-dir
+          git pull origin main
+          npm install
+          pm2 stop all || true
+          pm2 start index.js --name your-app
+        EOF
